@@ -3,7 +3,7 @@ import pandas as pd
 from category_map import normalize_category
 from color_map import normalize_color, preprocess
 from price_cleaner import clean_price
-from name_cleaner import clean_name   # ← ДОБАВЛЯЕМ ЭТО!
+from name_cleaner import clean_name
 
 
 df = pd.read_csv("raw_merged.csv")

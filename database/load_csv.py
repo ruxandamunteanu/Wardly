@@ -17,11 +17,10 @@ cursor = conn.cursor()
 
 df = pd.read_csv("../data_processing/clean_norm.csv")
 
-# ————— ИСПРАВЛЕНИЕ "nan" —————
+
 df = df.replace({pd.NA: None, float("nan"): None, "nan": None, "NaN": None})
 df = df.where(pd.notnull(df), None)
 
-# оставляем только нужные колонки (14)
 df = df[
     [
         "shop",

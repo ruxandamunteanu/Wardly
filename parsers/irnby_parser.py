@@ -20,19 +20,37 @@ HEADERS = {
     "Referer": "https://irnby.com/"
 }
 
+
+# категории
 def get_categories():
     r = session.get(CATEGORIES_URL, headers=HEADERS)
     r.raise_for_status()
     cats = r.json()
 
+    EXCLUDED_SLUGS = {
+        "women",
+        "new",
+        "soon",
+        "sport",
+        "casual",
+        "activities",
+        "must-have",
+        "underwear",
+        "men",
+    }
+
     filtered = []
 
     for c in cats:
+        slug = (c.get("slug") or "").lower()
 
-        if c.get("title") in ["NEW", "WOMEN", "SPORT"]:
+        if not slug:
             continue
 
-        if not c.get("slug"):
+        if slug in EXCLUDED_SLUGS:
+            continue
+
+        if slug.endswith("-spirit"):
             continue
 
         filtered.append(c)
@@ -40,8 +58,7 @@ def get_categories():
     return filtered
 
 
-# ------------------ Товары ------------------
-
+# товары
 def get_page(category_id, page):
     payload = {
         "categories": [category_id],
@@ -74,7 +91,10 @@ def get_all_products(category_id):
 
     return all_items
 
+
+# обработка товара
 def parse_product(p, category_title):
+
     sku = p.get("skus", [])
     if sku:
         sku = sku[0]
@@ -84,7 +104,11 @@ def parse_product(p, category_title):
         article = ""
         color = ""
 
-    image_url = p.get("images", [""])[0]
+    images = p.get("images", []) or [""]
+    image_url = images[0]
+
+    if "MEN" in image_url.upper():
+        return None
 
     return {
         "shop": "irnby",
@@ -98,7 +122,9 @@ def parse_product(p, category_title):
         "url": f"https://irnby.com/product/{p.get('slug', '')}"
     }
 
+
 if __name__ == "__main__":
+    print("Получаем категории...")
     categories = get_categories()
     print(f"Категорий после фильтрации: {len(categories)}")
 
@@ -114,17 +140,16 @@ if __name__ == "__main__":
 
     all_products = []
     seen = set()
-    men_removed = 0
 
     for cat in categories:
-        title = cat.get("title", "").strip()
+        title = (cat.get("title") or "").strip()
 
         if title in EXCLUDE_CATEGORIES:
             print(f"Пропуск: {title}")
             continue
 
         cid = cat["id"]
-        print(f"\nКатегория: {title} ")
+        print(f"\nКатегория: {title}")
 
         items = get_all_products(cid)
         print(f"Найдено товаров: {len(items)}")
@@ -132,19 +157,18 @@ if __name__ == "__main__":
         for p in items:
             pr = parse_product(p, title)
 
-            # фильтр MEN
-            if "MEN" in pr["image"].upper():
-                men_removed += 1
+            if pr is None:
                 continue
 
             if pr["id"] not in seen:
                 seen.add(pr["id"])
                 all_products.append(pr)
 
+    # Сохранение CSV
     if all_products:
         with open("irnby_products.csv", "w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=all_products[0].keys())
             writer.writeheader()
             writer.writerows(all_products)
 
-    print(f"\n Уникальных товаров: {len(all_products)}")
+    print(f"\nВсего товаров: {len(all_products)}")
